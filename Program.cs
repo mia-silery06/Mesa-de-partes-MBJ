@@ -1,9 +1,13 @@
 ﻿using System;
+using System.IO;
 
 class Program
 {
+    static string archivoRuta = "usuarios.txt";
+
     static void Main(string[] args)
     {
+
         bool salir = false;
         while (!salir)
         {
@@ -16,7 +20,6 @@ class Program
             Console.WriteLine("3. Salir del programa");
             Console.Write("Seleccione una opción marcando un número: ");
             string opcion = Console.ReadLine()!;
-
             if (opcion == "1") IniciarSesion();
             else if (opcion == "2") RegistrarCuenta();
             else if (opcion == "3") { Console.WriteLine("\n¡Hasta luego!"); salir = true; }
@@ -32,7 +35,21 @@ class Program
         string nuevoUsuario = Console.ReadLine()!;
         Console.Write("Ingrese su nueva contraseña: ");
         string nuevaClave = Console.ReadLine()!;
-        Console.WriteLine($"\n[Borrador] Datos capturados para {nuevoUsuario}. Presione ENTER.");
+
+
+        if (string.IsNullOrWhiteSpace(nuevoUsuario) || string.IsNullOrWhiteSpace(nuevaClave))
+        {
+            Console.WriteLine("\nError: El usuario o la contraseña no pueden estar vacíos.");
+            Console.ReadLine();
+            return;
+        }
+
+
+        using (StreamWriter sw = new StreamWriter(archivoRuta, true))
+        {
+            sw.WriteLine($"{nuevoUsuario},{nuevaClave}");
+        }
+        Console.WriteLine($"\n¡Usuario '{nuevoUsuario}' guardado permanentemente en el archivo!");
         Console.ReadLine();
     }
 
@@ -44,7 +61,7 @@ class Program
         string usuarioInput = Console.ReadLine()!;
         Console.Write("Contraseña: ");
         string claveInput = Console.ReadLine()!;
-        Console.WriteLine("\n[Borrador] Intento de login recibido. Presione ENTER.");
+        Console.WriteLine("\n[Borrador] Login no conectado al archivo todavía. Presione ENTER.");
         Console.ReadLine();
     }
 }
