@@ -7,7 +7,6 @@ class Program
 
     static void Main(string[] args)
     {
-
         bool salir = false;
         while (!salir)
         {
@@ -20,6 +19,7 @@ class Program
             Console.WriteLine("3. Salir del programa");
             Console.Write("Seleccione una opción marcando un número: ");
             string opcion = Console.ReadLine()!;
+
             if (opcion == "1") IniciarSesion();
             else if (opcion == "2") RegistrarCuenta();
             else if (opcion == "3") { Console.WriteLine("\n¡Hasta luego!"); salir = true; }
@@ -36,14 +36,12 @@ class Program
         Console.Write("Ingrese su nueva contraseña: ");
         string nuevaClave = Console.ReadLine()!;
 
-
         if (string.IsNullOrWhiteSpace(nuevoUsuario) || string.IsNullOrWhiteSpace(nuevaClave))
         {
             Console.WriteLine("\nError: El usuario o la contraseña no pueden estar vacíos.");
             Console.ReadLine();
             return;
         }
-
 
         using (StreamWriter sw = new StreamWriter(archivoRuta, true))
         {
@@ -61,7 +59,46 @@ class Program
         string usuarioInput = Console.ReadLine()!;
         Console.Write("Contraseña: ");
         string claveInput = Console.ReadLine()!;
-        Console.WriteLine("\n[Borrador] Login no conectado al archivo todavía. Presione ENTER.");
-        Console.ReadLine();
+
+        if (!File.Exists(archivoRuta))
+        {
+            Console.WriteLine("\nError: No hay cuentas registradas en el sistema todavía.");
+            Console.ReadLine();
+            return;
+        }
+
+        string[] lineas = File.ReadAllLines(archivoRuta);
+        bool loginExitoso = false;
+
+        foreach (string linea in lineas)
+        {
+            string[] partes = linea.Split(',');
+            string usuarioGuardado = partes[0];
+            string claveGuardada = partes[1];
+
+            if (usuarioInput == usuarioGuardado && claveInput == claveGuardada)
+            {
+                loginExitoso = true;
+                break;
+            }
+        }
+
+        if (loginExitoso)
+        {
+            Console.WriteLine($"\n¡Bienvenido, {usuarioInput}!");
+            Console.WriteLine("==========================================================");
+            Console.WriteLine("MENÚ DE LA MESA DE PARTES (Opción 1 Activa)");
+            Console.WriteLine("==========================================================");
+            Console.WriteLine("1. Registrar nuevo expediente (Activo)");
+            Console.WriteLine("2. Consultar expediente (Próximamente)");
+            Console.WriteLine("3. Ordenar expedientes (Próximamente)");
+            Console.WriteLine("\nPresione ENTER para cerrar sesión.");
+            Console.ReadLine();
+        }
+        else
+        {
+            Console.WriteLine("\nError: Usuario o contraseña incorrectos.");
+            Console.ReadLine();
+        }
     }
 }
