@@ -3,10 +3,19 @@ using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+
 class Program
 {
     static string archivoRuta = "usuarios.txt";  // Formato usuarios.txt : nombre,apellido,dni,hashClave
     static string rutaTramites = "tramites.txt"; // Formato tramites.txt : codigo,dni,tipo,detalle1,detalle2,fecha
+
+    const int MAX_TRAMITES = 100;
+    static string[] codigos = new string[MAX_TRAMITES];
+    static string[] tipos = new string[MAX_TRAMITES];
+    static string[] detalles1 = new string[MAX_TRAMITES];
+    static string[] detalles2 = new string[MAX_TRAMITES];
+    static string[] fechas = new string[MAX_TRAMITES];
+    static int cantidad = 0;
 
     static void Main(string[] args)
     {
@@ -25,6 +34,9 @@ class Program
             }
         }
     }
+
+    // MENÚ PRINCIPAL
+
     static string mostrarMenuPrincipal()
     {
         while (true)
@@ -45,6 +57,9 @@ class Program
             Console.ReadLine();
         }
     }
+
+    // REGISTRO
+
     static void registrarCuenta()
     {
         Console.Clear();
@@ -86,6 +101,7 @@ class Program
     }
 
     // INICIO DE SESIÓN
+
     static void iniciarSesion()
     {
         Console.Clear();
@@ -121,6 +137,8 @@ class Program
         Console.ReadLine();
     }
 
+    // MENÚ DE USUARIO
+
     static void menuUsuario(string dni, string nombre, string apellido)
     {
         bool sesionActiva = true;
@@ -143,12 +161,11 @@ class Program
 
             switch (opcion)
             {
-                // En creación las funciones de cada opción, por ahora solo se cierra la sesión
                 case "1": registrarTramite(dni); break;
-                case "2": //verTramites(dni) 
-                case "3": //buscarTramites(dni)
-                case "4": //ordenarTramites(dni)
-                case "5": //cancelarTramite(dni)
+                case "2": verTramites(dni); break;
+                case "3": buscarTramites(dni); break;
+                case "4": ordenarTramites(dni); break;
+                case "5": cancelarTramite(dni); break;
                 case "6":
                     Console.WriteLine("\nCerrando sesión... (presione enter)");
                     Console.ReadLine();
@@ -161,6 +178,8 @@ class Program
             }
         }
     }
+
+    // REGISTRAR TRÁMITE 
 
     static void registrarTramite(string dni)
     {
@@ -240,6 +259,229 @@ class Program
         Console.ReadLine();
     }
 
+    //  ARREGLOS: CARGAR Y MOSTRAR 
+
+    static void cargarTramites(string dni)
+    {
+        cantidad = 0;
+        if (!File.Exists(rutaTramites)) return;
+
+        string[] lineas = File.ReadAllLines(rutaTramites);
+        for (int i = 0; i < lineas.Length; i++)
+        {
+            string[] p = lineas[i].Split(',');
+            if (p.Length >= 6 && p[1] == dni && cantidad < MAX_TRAMITES)
+            {
+                codigos[cantidad] = p[0];
+                tipos[cantidad] = p[2];
+                detalles1[cantidad] = p[3];
+                detalles2[cantidad] = p[4];
+                fechas[cantidad] = p[5];
+                cantidad++;
+            }
+        }
+    }
+
+    static void mostrarTramite(int i)
+    {
+        Console.WriteLine("----------------------------------------------------------");
+        Console.WriteLine($"Código : {codigos[i]}");
+        Console.WriteLine($"Tipo   : {tipos[i]}");
+        Console.WriteLine($"Datos  : {detalles1[i]} | {detalles2[i]}");
+        Console.WriteLine($"Fecha  : {fechas[i]}");
+    }
+
+    static void mostrarLista()
+    {
+        if (cantidad == 0)
+        {
+            Console.WriteLine("No se encontraron trámites.");
+            return;
+        }
+
+        for (int i = 0; i < cantidad; i++)
+        {
+            mostrarTramite(i);
+        }
+        Console.WriteLine("----------------------------------------------------------");
+        Console.WriteLine($"Total: {cantidad} trámite(s)");
+    }
+
+    // VER / BUSCAR / ORDENAR / CANCELAR 
+
+    static void verTramites(string dni)
+    {
+        Console.Clear();
+        Console.WriteLine("=== MIS TRÁMITES ===");
+        cargarTramites(dni);
+        mostrarLista();
+        pausa();
+    }
+
+    static void buscarTramites(string dni)
+    {
+        Console.Clear();
+        Console.WriteLine("=== BUSCAR TRÁMITE ===");
+        string texto = pedirTexto("Ingrese el código de expediente o el tipo de trámite: ", "La búsqueda");
+
+        cargarTramites(dni);
+
+        int encontrados = 0;
+        Console.WriteLine();
+        for (int i = 0; i < cantidad; i++)
+        {
+            if (codigos[i].Contains(texto, StringComparison.OrdinalIgnoreCase) ||
+                tipos[i].Contains(texto, StringComparison.OrdinalIgnoreCase))
+            {
+                mostrarTramite(i);
+                encontrados++;
+            }
+        }
+
+        if (encontrados == 0)
+            Console.WriteLine("No se encontraron trámites con esa búsqueda.");
+        else
+        {
+            Console.WriteLine("----------------------------------------------------------");
+            Console.WriteLine($"Coincidencias: {encontrados}");
+        }
+        pausa();
+    }
+
+    static void ordenarTramites(string dni)
+    {
+        Console.Clear();
+        Console.WriteLine("=== ORDENAR TRÁMITES ===");
+        Console.WriteLine("1. Por fecha (más recientes primero)");
+        Console.WriteLine("2. Por fecha (más antiguos primero)");
+        Console.WriteLine("3. Por tipo de trámite (A-Z)");
+        Console.Write("\nSeleccione una opción: ");
+        string opcion = (Console.ReadLine() ?? "").Trim();
+
+        if (opcion != "1" && opcion != "2" && opcion != "3")
+        {
+            Console.WriteLine("\nOpción inválida. (presione enter)");
+            Console.ReadLine();
+            return;
+        }
+
+        cargarTramites(dni);
+        ordenarBurbuja(int.Parse(opcion));
+
+        Console.WriteLine();
+        mostrarLista();
+        pausa();
+    }
+
+    static void ordenarBurbuja(int criterio)
+    {
+        for (int i = 0; i < cantidad - 1; i++)
+        {
+            for (int j = 0; j < cantidad - 1 - i; j++)
+            {
+                if (debeIntercambiar(j, j + 1, criterio))
+                {
+                    intercambiar(j, j + 1);
+                }
+            }
+        }
+    }
+
+    static bool debeIntercambiar(int a, int b, int criterio)
+    {
+        int comparacion;
+
+        if (criterio == 3)
+        {
+            comparacion = string.Compare(tipos[a], tipos[b], StringComparison.OrdinalIgnoreCase);
+            if (comparacion == 0)
+                comparacion = string.Compare(codigos[a], codigos[b], StringComparison.Ordinal);
+        }
+        else
+        {
+            comparacion = string.Compare(codigos[a], codigos[b], StringComparison.Ordinal);
+        }
+
+        if (criterio == 1) return comparacion < 0;
+        return comparacion > 0;
+    }
+
+    static void intercambiar(int a, int b)
+    {
+        string temp;
+
+        temp = codigos[a]; codigos[a] = codigos[b]; codigos[b] = temp;
+        temp = tipos[a]; tipos[a] = tipos[b]; tipos[b] = temp;
+        temp = detalles1[a]; detalles1[a] = detalles1[b]; detalles1[b] = temp;
+        temp = detalles2[a]; detalles2[a] = detalles2[b]; detalles2[b] = temp;
+        temp = fechas[a]; fechas[a] = fechas[b]; fechas[b] = temp;
+    }
+
+    static int buscarPosicion(string codigo)
+    {
+        for (int i = 0; i < cantidad; i++)
+        {
+            if (codigos[i].Equals(codigo, StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+        return -1;
+    }
+
+    static void cancelarTramite(string dni)
+    {
+        Console.Clear();
+        Console.WriteLine("=== CANCELAR TRÁMITE ===");
+
+        cargarTramites(dni);
+        if (cantidad == 0)
+        {
+            Console.WriteLine("\nNo tiene trámites registrados.");
+            pausa();
+            return;
+        }
+
+        mostrarLista();
+        string codigo = pedirTexto("\nIngrese el código del trámite a cancelar: ", "El código");
+
+        int pos = buscarPosicion(codigo);
+        if (pos == -1)
+        {
+            Console.WriteLine("\nNo se encontró un trámite suyo con ese código.");
+            pausa();
+            return;
+        }
+
+        Console.Write($"¿Seguro que desea cancelar {codigos[pos]} ({tipos[pos]})? (s/n): ");
+        if ((Console.ReadLine() ?? "").Trim().ToLower() != "s")
+        {
+            Console.WriteLine("\nCancelación abortada.");
+            pausa();
+            return;
+        }
+
+        string[] lineas = File.ReadAllLines(rutaTramites);
+        using (StreamWriter escritor = new StreamWriter(rutaTramites, false))
+        {
+            for (int i = 0; i < lineas.Length; i++)
+            {
+                string[] p = lineas[i].Split(',');
+                bool esLaQueSeCancela = p.Length >= 2 && p[0] == codigos[pos] && p[1] == dni;
+                if (!esLaQueSeCancela)
+                {
+                    escritor.WriteLine(lineas[i]);
+                }
+            }
+        }
+
+        Console.WriteLine("\nTrámite cancelado correctamente.");
+        pausa();
+    }
+
+    static void pausa()
+    {
+        Console.WriteLine("\nPresione enter para volver al menú...");
+        Console.ReadLine();
+    }
 
     //  VALIDACIONES
 
@@ -317,6 +559,7 @@ class Program
             Console.ReadLine();
         }
     }
+
     static string pedirDni()
     {
         while (true)
@@ -347,6 +590,7 @@ class Program
         if (clave == dni) return "La contraseña no puede ser igual a su DNI.";
         return "";
     }
+
     static string pedirClaveNueva(string dni)
     {
         while (true)
@@ -415,6 +659,8 @@ class Program
         }
     }
 
+    // SEGURIDAD 
+
     static string leerClaveOculta()
     {
         StringBuilder sb = new StringBuilder();
@@ -448,4 +694,3 @@ class Program
         return Convert.ToHexString(bytes);
     }
 }
-
