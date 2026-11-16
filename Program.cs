@@ -6,6 +6,8 @@ using System.Text;
 class Program
 {
     static string archivoRuta = "usuarios.txt";  // Formato usuarios.txt : nombre,apellido,dni,hashClave
+    static string rutaTramites = "tramites.txt"; // Formato tramites.txt : codigo,dni,tipo,detalle1,detalle2,fecha
+
     static void Main(string[] args)
     {
         bool salir = false;
@@ -119,7 +121,7 @@ class Program
         Console.ReadLine();
     }
 
-     static void menuUsuario(string dni, string nombre, string apellido)
+    static void menuUsuario(string dni, string nombre, string apellido)
     {
         bool sesionActiva = true;
         while (sesionActiva)
@@ -142,7 +144,7 @@ class Program
             switch (opcion)
             {
                 // En creación las funciones de cada opción, por ahora solo se cierra la sesión
-                case "1": //registrarTramite
+                case "1": registrarTramite(dni); break;
                 case "2": //verTramites(dni) 
                 case "3": //buscarTramites(dni)
                 case "4": //ordenarTramites(dni)
@@ -159,6 +161,85 @@ class Program
             }
         }
     }
+
+    static void registrarTramite(string dni)
+    {
+        while (true)
+        {
+            Console.Clear();
+            Console.WriteLine("==========================================================");
+            Console.WriteLine("BIENVENIDO AL MÓDULO DE REGISTRO DE TRÁMITES");
+            Console.WriteLine("==========================================================");
+            Console.WriteLine("Elija el tipo de trámite que desea registrar:");
+            Console.WriteLine("1. Demanda de Alimentos");
+            Console.WriteLine("2. Rectificación de Partida");
+            Console.WriteLine("3. Despido Arbitrario");
+            Console.WriteLine("4. Volver al menú anterior");
+            Console.Write("\nIngrese su elección: ");
+            string eleccion = (Console.ReadLine() ?? "").Trim();
+
+            if (eleccion == "1")
+            {
+                Console.Clear();
+                Console.WriteLine("=== REGISTRO: DEMANDA DE ALIMENTOS ===");
+                string demandado = pedirTexto("Ingrese el nombre completo del demandado: ", "El nombre del demandado", permitirNumeros: false, formatoNombre: true);
+                decimal monto = pedirMonto();
+                string montoTexto = monto.ToString("F2", CultureInfo.InvariantCulture);
+
+                guardarTramite(dni, "Demanda de Alimentos", $"Demandado: {demandado}", $"Monto: S/. {montoTexto}");
+                return;
+            }
+            else if (eleccion == "2")
+            {
+                Console.Clear();
+                Console.WriteLine("=== REGISTRO: RECTIFICACIÓN DE PARTIDA ===");
+                string tipoPartida = pedirTipoPartida();
+                string error = pedirTexto("Ingrese la descripción del error a rectificar: ", "La descripción");
+
+                guardarTramite(dni, "Rectificación de Partida", $"Partida: {tipoPartida}", $"Error: {error}");
+                return;
+            }
+            else if (eleccion == "3")
+            {
+                Console.Clear();
+                Console.WriteLine("=== REGISTRO: DESPIDO ARBITRARIO ===");
+                string empresa = pedirTexto("Ingrese el nombre de la empresa empleadora: ", "El nombre de la empresa");
+                string motivo = pedirTexto("Ingrese el motivo o detalle del despido: ", "El detalle del despido");
+
+                guardarTramite(dni, "Despido Arbitrario", $"Empresa: {empresa}", $"Motivo: {motivo}");
+                return;
+            }
+            else if (eleccion == "4")
+            {
+                return;
+            }
+            else
+            {
+                Console.WriteLine("\nOpción inválida. Intente de nuevo (presione enter).");
+                Console.ReadLine();
+            }
+        }
+    }
+
+    static void guardarTramite(string dni, string tipo, string detalle1, string detalle2)
+    {
+        string codigo = "EXP-" + DateTime.Now.ToString("yyyyMMdd-HHmmssfff");
+        string fecha = DateTime.Now.ToString("yyyy-MM-dd");
+
+        using (StreamWriter escritor = new StreamWriter(rutaTramites, true))
+        {
+            escritor.WriteLine($"{codigo},{dni},{tipo},{detalle1},{detalle2},{fecha}");
+        }
+
+        Console.WriteLine("\n==========================================================");
+        Console.WriteLine("¡TRÁMITE REGISTRADO CON ÉXITO!");
+        Console.WriteLine($"Su Código de Expediente es: {codigo}");
+        Console.WriteLine("Guarde este código para hacer seguimiento o búsquedas.");
+        Console.WriteLine("==========================================================");
+        Console.WriteLine("Presione enter para volver al menú...");
+        Console.ReadLine();
+    }
+
 
     //  VALIDACIONES
 
@@ -257,12 +338,14 @@ class Program
         }
     }
 
-    //En progreso
     static string validarClave(string clave, string dni)
     {
-        Console.WriteLine("en progreso");
-        return "en progreso";
-
+        if (clave.Length < 6) return "La contraseña debe tener al menos 6 caracteres.";
+        if (tieneEspacios(clave)) return "La contraseña no puede contener espacios.";
+        if (!tieneLetra(clave)) return "La contraseña debe tener al menos una letra.";
+        if (!tieneDigito(clave)) return "La contraseña debe tener al menos un número.";
+        if (clave == dni) return "La contraseña no puede ser igual a su DNI.";
+        return "";
     }
     static string pedirClaveNueva(string dni)
     {
@@ -290,12 +373,73 @@ class Program
         }
     }
 
-    //En progreso
+    static decimal pedirMonto()
+    {
+        const decimal minimo = 10.00m;
+        const decimal maximo = 50000.00m;
+
+        while (true)
+        {
+            Console.Write("Ingrese el monto mensual solicitado (S/.): ");
+            string texto = (Console.ReadLine() ?? "").Trim().Replace(',', '.');
+
+            if (string.IsNullOrWhiteSpace(texto))
+                Console.WriteLine("El monto no puede estar vacío.");
+            else if (!decimal.TryParse(texto, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal monto))
+                Console.WriteLine("Error: Debe ingresar un número válido.");
+            else if (monto < minimo || monto > maximo)
+                Console.WriteLine($"Error: El monto debe estar entre {minimo:F2} y {maximo:F2}.");
+            else if (Math.Round(monto, 2) != monto)
+                Console.WriteLine("Error: El monto no puede tener más de 2 decimales.");
+            else
+                return monto;
+
+            Console.WriteLine("(presione enter para volver a intentarlo)");
+            Console.ReadLine();
+        }
+    }
+
+    static string pedirTipoPartida()
+    {
+        while (true)
+        {
+            Console.Write("Ingrese el tipo de partida (Nacimiento / Matrimonio / Defunción): ");
+            string tipo = (Console.ReadLine() ?? "").Trim().ToLower();
+
+            if (tipo == "nacimiento") return "Nacimiento";
+            if (tipo == "matrimonio") return "Matrimonio";
+            if (tipo == "defunción" || tipo == "defuncion") return "Defunción";
+
+            Console.WriteLine("Tipo inválido. Debe ser Nacimiento, Matrimonio o Defunción. (presione enter)");
+            Console.ReadLine();
+        }
+    }
+
     static string leerClaveOculta()
     {
-        Console.WriteLine("en progreso");
-        return "en progreso";
-
+        StringBuilder sb = new StringBuilder();
+        while (true)
+        {
+            ConsoleKeyInfo tecla = Console.ReadKey(true);
+            if (tecla.Key == ConsoleKey.Enter)
+            {
+                Console.WriteLine();
+                return sb.ToString();
+            }
+            if (tecla.Key == ConsoleKey.Backspace)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Length--;
+                    Console.Write("\b \b");
+                }
+            }
+            else if (!char.IsControl(tecla.KeyChar))
+            {
+                sb.Append(tecla.KeyChar);
+                Console.Write("*");
+            }
+        }
     }
 
     static string hashClave(string clave)
